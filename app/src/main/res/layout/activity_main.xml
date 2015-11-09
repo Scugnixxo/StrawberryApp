@@ -12,20 +12,6 @@
 
 
     <Button
-        android:id="@+id/main_scanButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"
-        android:background="@drawable/custom_button"
-        android:clickable="true"
-        android:onClick="scanButton"
-        android:text="SCANSIONA CODICE QR"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:textColor="@android:color/black"
-        android:textSize="22sp" />
-
-    <Button
         android:id="@+id/main_sendButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -45,9 +31,45 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="10dp"
         android:gravity="center_horizontal"
         android:text="BENVENUTO"
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:textColor="@android:color/white" />
+
+    <Button
+        android:id="@+id/main_qrButton"
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/main_sendButton"
+        android:layout_alignStart="@+id/main_sendButton"
+        android:layout_below="@+id/mainWelcomeText"
+        android:layout_marginLeft="26dp"
+        android:layout_marginStart="26dp"
+        android:onClick="scanButton"
+        android:text="QR" />
+
+    <Button
+        android:id="@+id/main_pistolButton"
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignEnd="@+id/main_sendButton"
+        android:layout_alignRight="@+id/main_sendButton"
+        android:layout_alignTop="@+id/main_qrButton"
+        android:onClick="scanBarPistolButton"
+        android:singleLine="true"
+        android:text="Pistola" />
+
+    <ListView
+        android:id="@+id/main_lista"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/main_sendButton"
+        android:layout_below="@+id/main_qrButton"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="10dp"
+        android:layout_marginTop="10dp" />
+
 </RelativeLayout>
