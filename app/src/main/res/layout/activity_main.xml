@@ -20,10 +20,10 @@
         android:background="@drawable/custom_button"
         android:clickable="true"
         android:onClick="sendFileButton"
+
         android:text="SINCRONIZZA SCANSIONI"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:textColor="@android:color/black"
-        android:textSize="22sp" />
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textColor="@android:color/black" />
 
     <TextView
         android:id="@+id/mainWelcomeText"
@@ -34,7 +34,7 @@
         android:layout_marginTop="10dp"
         android:gravity="center_horizontal"
         android:text="BENVENUTO"
-        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white" />
 
     <Button
@@ -60,7 +60,9 @@
         android:layout_alignTop="@+id/main_qrButton"
         android:onClick="scanBarPistolButton"
         android:singleLine="true"
-        android:text="Pistola" />
+        android:text="Pistola"
+
+        />
 
     <ListView
         android:id="@+id/main_lista"
@@ -70,6 +72,7 @@
         android:layout_below="@+id/main_qrButton"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="10dp"
-        android:layout_marginTop="10dp" />
+        android:layout_marginTop="10dp"
+        android:textAppearance="?android:attr/textAppearanceSmall" />
 
 </RelativeLayout>

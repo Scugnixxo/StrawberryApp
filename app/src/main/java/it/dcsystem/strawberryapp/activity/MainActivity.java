@@ -2,6 +2,8 @@ package it.dcsystem.strawberryapp.activity;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -66,6 +68,7 @@ public class MainActivity extends Activity {
     private static LinkedList<String> scansioniList;
     private static SimpleDateFormat sdf;
     private static Ringtone r;
+    private static Intent serviceIntent;
 
     static {
         UIHandler = new Handler(Looper.getMainLooper());
@@ -81,9 +84,9 @@ public class MainActivity extends Activity {
     private IntentIntegrator scanInt;
     private int front;
     private BluetoothAdapter btAdapter;
-    private Intent serviceIntent;
     private BluetoothDevice mmDevice;
     private ListView lista;
+    private NotificationManager notificationManager;
 
     /**
      * Metodo per riavviare il servizio di scansione con pistola
@@ -91,8 +94,6 @@ public class MainActivity extends Activity {
     public static void resetService() {
         checkServiceOn = false;
     }
-
-    ////////////////////////////////// METODI PUBBLICI NON STATICI ///////////////////////////////////////
 
     /**
      * Metodo che inserisci i risultati della scansione con la pistola
@@ -138,6 +139,10 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     resultTxt.setText("HAI SCANSIONATO: " + scanResult);
+                    qrButton.setEnabled(true);
+                    qrButton.setClickable(true);
+                    pistolButton.setEnabled(true);
+                    pistolButton.setClickable(true);
                 }
             });
             //se ho scansionato due codici, posso procedere con la nuova scansione
@@ -218,9 +223,6 @@ public class MainActivity extends Activity {
         }.execute();
     }
 
-
-    ////////////////////////////////// METODI PUBBLICI STATICI ///////////////////////////////////////
-
     /**
      * Getter del socket della pistola
      *
@@ -276,7 +278,7 @@ public class MainActivity extends Activity {
         //creo il database
         gdb = GestioneDB.getInstance(getApplicationContext());
         scanCount = 0;
-
+        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         r = RingtoneManager.getRingtone(getApplicationContext(), notification);
     }
@@ -290,8 +292,6 @@ public class MainActivity extends Activity {
         startScan();
     }
 
-
-    ////////////////////////////////// METODI OVERRIDE ///////////////////////////////////////
 
     /**
      * Metodo che esegue l'attività di scansione del barcode con la pistola
@@ -366,13 +366,23 @@ public class MainActivity extends Activity {
                                 try {
 
                                     mmSocket.connect();
+
                                     if (progress != null && progress.isShowing())
                                         progress.dismiss();
                                     //devo dire di lanciare il servizio di ascolto
                                     myHandler.post(new Runnable() {
                                         @Override
                                         public void run() {
+
+                                            Notification.Builder notiB = new Notification.Builder(MainActivity.this);
+                                            notiB.setSmallIcon(R.mipmap.ic_blue_on).setContentTitle("BLUETOOTH CONNESSO").setContentText("PISTOLA CONNESSA");
+                                            @SuppressWarnings("deprecation")
+                                            Notification noti = notiB.getNotification();
+                                            noti.flags |= Notification.FLAG_NO_CLEAR;
+                                            notificationManager.notify(0, noti);
+
                                             showToastMsg("Collegamento alla pistola eseguito!");
+
                                             pistolButton.setText("Disattiva Pistola");
                                             pistolButton.setEnabled(true);
                                             pistolButton.setClickable(true);
@@ -390,10 +400,13 @@ public class MainActivity extends Activity {
                                         myHandler.post(new Runnable() {
                                             @Override
                                             public void run() {
+
                                                 showToastMsg("Impossibile collegarsi alla pistola bluetooth");
                                                 pistolButton.setText("Pistola");
                                                 pistolButton.setEnabled(true);
                                                 pistolButton.setClickable(true);
+                                                qrButton.setEnabled(true);
+                                                qrButton.setClickable(true);
 
                                             }
                                         });
@@ -402,8 +415,11 @@ public class MainActivity extends Activity {
                                         myHandler.post(new Runnable() {
                                             @Override
                                             public void run() {
+
                                                 showToastMsg("Impossibile collegarsi alla pistola bluetooth");
                                                 pistolButton.setText("Pistola");
+                                                qrButton.setEnabled(true);
+                                                qrButton.setClickable(true);
                                                 pistolButton.setEnabled(true);
                                                 pistolButton.setClickable(true);
 
@@ -422,14 +438,18 @@ public class MainActivity extends Activity {
             } else {
                 showToastMsg("Impossibile collegarsi alla pistola bluetooth");
                 pistolButton.setText("Pistola");
+                qrButton.setEnabled(true);
+                qrButton.setClickable(true);
                 pistolButton.setEnabled(true);
                 pistolButton.setClickable(true);
             }
 
         } else {
 
-            resetService();
+            stopService();
             pistolButton.setText("Pistola");
+            qrButton.setEnabled(true);
+            qrButton.setClickable(true);
             pistolButton.setEnabled(true);
             pistolButton.setClickable(true);
             showToastMsg("Pistola Scollegata");
@@ -532,12 +552,12 @@ public class MainActivity extends Activity {
                     e.printStackTrace();
                 }
                 scanCount--;
-                myHandler.postDelayed(new Runnable() {
+               /* myHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         startScan();
                     }
-                }, LONGTIME + 5);
+                }, LONGTIME + 5);*/
             } else {
                 scansioni.add(scanResult);
 
@@ -545,6 +565,10 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         resultTxt.setText("HAI SCANSIONATO: " + scanResult);
+                        qrButton.setEnabled(true);
+                        qrButton.setClickable(true);
+                        pistolButton.setEnabled(true);
+                        pistolButton.setClickable(true);
                     }
                 });
                 //se ho scansionato due codici, posso procedere con la nuova scansione
@@ -558,26 +582,30 @@ public class MainActivity extends Activity {
                     saveResult();
                 } else {
                     scansioniList.addLast(scanResult);
-                    myHandler.postDelayed(new Runnable() {
+                  /*  myHandler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                             startScan();
                         }
-                    }, LONGTIME - 1500);
+                    }, LONGTIME - 1500);*/
                 }
             }
         } else {
 
             //erore gestito dalla pagina della main
             resultTxt.setText("ERRORE: NESSUNA SCANSIONE EFFETTUATA");
+            qrButton.setEnabled(true);
+            qrButton.setClickable(true);
+            pistolButton.setEnabled(true);
+            pistolButton.setClickable(true);
             //verifico se ho scansionato due codici corretti
-            if (scanCount < 2)
+           /* if (scanCount < 2)
                 myHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         startScan();
                     }
-                }, LONGTIME - 1500);
+                }, LONGTIME - 1500);*/
 
 
         }
@@ -585,14 +613,6 @@ public class MainActivity extends Activity {
 
     }
 
-    @Override
-    /**
-     * alla pressione del tasto back, impedisco la chiusura dell'attività e rieseguo la scansione qr
-     */
-    public void onBackPressed() {
-
-        startScan();
-    }
 
     @Override
     public void onResume() {
@@ -600,8 +620,10 @@ public class MainActivity extends Activity {
         adapter.notifyDataSetChanged();
     }
 
+    @Override
+    public void onBackPressed() {
 
-    ////////////////////////////////// METODI PRIVATI   ///////////////////////////////////////
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -617,6 +639,7 @@ public class MainActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
 
         showToastMsg("ARRIVEDERCI");
+        notificationManager.cancel(0);
         myHandler.postDelayed(finish, LONGTIME + 100);
         return true;
 
@@ -704,8 +727,6 @@ public class MainActivity extends Activity {
         return result;
     }
 
-    ////////////////////////////////// GETTER & SETTER //////////////////////////
-
     /**
      * Metodo per avviare il servizio per la scansione tramite pistola
      */
@@ -716,6 +737,21 @@ public class MainActivity extends Activity {
             startService(serviceIntent);
 
             checkServiceOn = true;
+        }
+    }
+
+    private void stopService() {
+        if (checkServiceOn == null || checkServiceOn) {
+
+
+            stopService(serviceIntent);
+            Notification.Builder notiB = new Notification.Builder(MainActivity.this);
+            notiB.setSmallIcon(R.mipmap.ic_blue_off).setContentTitle("BLUETOOTH DISCONESSO").setContentText("PISTOLA DISCONNESSA");
+            @SuppressWarnings("deprecation")
+            Notification noti = notiB.getNotification();
+            noti.flags |= Notification.FLAG_NO_CLEAR;
+            notificationManager.notify(0, noti);
+            checkServiceOn = false;
         }
     }
 }

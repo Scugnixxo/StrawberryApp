@@ -5,10 +5,7 @@ package it.dcsystem.strawberryapp.service;
  */
 
 
-import android.app.NotificationManager;
 import android.app.Service;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.os.Handler;
@@ -22,15 +19,9 @@ import it.dcsystem.strawberryapp.socket.ReadFromPistolThread;
 public class ReadFromPistolService extends Service {
 
 
-    private static android.content.Context that;
-
-    private static Thread multiT;
-    private static NotificationManager notificationManager;
+    private static ReadFromPistolThread multiT;
     Handler updateConversationHandler;
-    private BluetoothAdapter btAdapter;
-    private BluetoothDevice mmDevice;
     private BluetoothSocket mmSocket;
-    private boolean launchThread;
 
 
     public static void salvaScansione(final String text) {
@@ -59,23 +50,22 @@ public class ReadFromPistolService extends Service {
     @Override
     public void onStart(Intent intent, int startId) {
         super.onStart(intent, startId);
-        launchThread = false;
-        that = this;
+
         mmSocket = MainActivity.getSocket();
 
         this.updateConversationHandler = new ReadFromPistolHandler();
-        multiT = new Thread(new ReadFromPistolThread(updateConversationHandler, mmSocket));
+        multiT = new ReadFromPistolThread(updateConversationHandler, mmSocket);
         multiT.start();
     }
 
     @Override
     public void onRebind(Intent intent) {
 
-        that = this;
+
         mmSocket = MainActivity.getSocket();
 
         if (multiT == null || multiT.isInterrupted()) {
-            multiT = new Thread(new ReadFromPistolThread(updateConversationHandler, mmSocket));
+            multiT = new ReadFromPistolThread(updateConversationHandler, mmSocket);
             multiT.start();
         }
     }
@@ -83,6 +73,7 @@ public class ReadFromPistolService extends Service {
     @Override
     public void onDestroy() {
         MainActivity.resetService();
+        multiT.cancel();
         super.onDestroy();
     }
 

@@ -11,7 +11,7 @@ import android.os.Message;
 
 import java.io.IOException;
 
-public class ReadFromPistolThread implements Runnable {
+public class ReadFromPistolThread extends Thread {
 
     private BluetoothSocket mmSocket;
     private Handler handler;
