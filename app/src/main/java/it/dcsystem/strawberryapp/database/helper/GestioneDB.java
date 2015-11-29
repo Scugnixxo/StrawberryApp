@@ -18,6 +18,7 @@ import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.Locale;
 import java.util.TimeZone;
 
@@ -129,6 +130,31 @@ public class GestioneDB {
 
 
         return data;
+    }
+
+    public LinkedList<String> loadLastDB() {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        LinkedList<String> tableResult = new LinkedList<>();
+
+        try {
+
+
+            //recupero i dati della tabella dal database
+            Cursor cur = databaseRead.rawQuery("SELECT * FROM scansioni", null);
+
+            //scrivo tutto nel csv
+            while (cur.moveToNext()) {
+
+                String row = cur.getString(1) + " | " + cur.getString(2) + " | " + cur.getString(3);
+                tableResult.add(row);
+            }
+
+            cur.close();
+            return tableResult;
+
+        } catch (Exception sqlEx) {
+            return null;
+        }
     }
 
     /**

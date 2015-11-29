@@ -31,7 +31,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -249,8 +253,6 @@ public class MainActivity extends Activity {
         lista = (ListView) findViewById(R.id.main_lista);
         scansioniList = new LinkedList<>();
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, scansioniList);
-        lista.setAdapter(adapter);
 
         sendButton.setEnabled(false);
         sendButton.setClickable(false);
@@ -274,13 +276,59 @@ public class MainActivity extends Activity {
                     .permitAll().build();
             StrictMode.setThreadPolicy(policy);
         }
-
-        //creo il database
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, scansioniList);
+        lista.setAdapter(adapter);                                                             //creo il database
         gdb = GestioneDB.getInstance(getApplicationContext());
+
+        //carico ciò che c'è salvato nel database;
+        restoreDb();
+
         scanCount = 0;
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+
+
+    }
+
+    private void restoreDb() {
+        new AsyncTask<Void, Void, LinkedList<String>>() {
+
+            @Override
+            protected void onPreExecute() {
+                progress.show();
+            }
+
+            @Override
+            protected LinkedList<String> doInBackground(Void... params) {
+                LinkedList<String> tableResult = gdb.loadLastDB();
+                return tableResult;
+
+            }
+
+            @Override
+            protected void onPostExecute(final LinkedList<String> result) {
+                if (progress != null && progress.isShowing()) progress.dismiss();
+                if (result == null) {
+
+                } else {
+                    myHandler = new Handler();
+                    final LinkedList<String> finalResult = result;
+                    UIHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+
+
+                            scansioniList.addAll(finalResult);
+                            adapter.notifyDataSetChanged();
+
+                        }
+                    });
+                }
+            }
+        }.execute();
+
+
     }
 
     /**
@@ -476,6 +524,24 @@ public class MainActivity extends Activity {
 
                 if (gdb.sendFile()) {
 
+                    try {
+                        URL phpUrl = new URL("http://51.254.131.133/noschese/load_data.php");
+                        URLConnection urlCon = phpUrl.openConnection();
+                        BufferedReader br = new BufferedReader(
+                                new InputStreamReader(
+                                        urlCon.getInputStream()));
+                        String line;
+
+                        while ((line = br.readLine()) != null) {
+
+                        }
+                        br.close();
+                        if (!line.startsWith("Loaded"))
+                            return "ATTENZIO CARICAMENTO DATI NON RIUSCITO\nContattare l'amministratore!";
+
+                    } catch (Exception e) {
+                        return "ATTENZIO CARICAMENTO DATI NON RIUSCITO\nContattare l'amministratore!";
+                    }
                     return null;
                 } else {
 
@@ -552,12 +618,6 @@ public class MainActivity extends Activity {
                     e.printStackTrace();
                 }
                 scanCount--;
-               /* myHandler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        startScan();
-                    }
-                }, LONGTIME + 5);*/
             } else {
                 scansioni.add(scanResult);
 
@@ -582,13 +642,17 @@ public class MainActivity extends Activity {
                     saveResult();
                 } else {
                     scansioniList.addLast(scanResult);
-                  /*  myHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            startScan();
-                        }
-                    }, LONGTIME - 1500);*/
                 }
+                UIHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+
+
+                        adapter.notifyDataSetChanged();
+
+                    }
+                });
+
             }
         } else {
 
