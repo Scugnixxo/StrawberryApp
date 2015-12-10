@@ -70,7 +70,6 @@ public class MainActivity extends Activity {
     private static Boolean checkServiceOn;
     private static ArrayAdapter<String> adapter;
     private static LinkedList<String> scansioniList;
-    private static SimpleDateFormat sdf;
     private static Ringtone r;
     private static Intent serviceIntent;
 
@@ -100,16 +99,19 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Metodo che inserisci i risultati della scansione con la pistola
+     * Metodo che inserisci in db i risultati della scansione con la pistola
      *
      * @param text
      */
     public static void insertIntoList(String text) {
         boolean restartScan = false;
+        //verifico se il contatore è a zero
+        if (scanCount == 0)
+            scansioni = new ArrayList<>();
         //aumento il contatore delle scansioni e inserisco il risultato nella lista scansioni
         scanCount++;
-        final String scanResult = text;
-        if (scanCount == 1 && !scanResult.startsWith("A")) {
+        //verifico la correttezza delle scansioni
+        if (scanCount == 1 && !text.startsWith("A")) {
             myHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -118,7 +120,7 @@ public class MainActivity extends Activity {
             });
 
             restartScan = true;
-        } else if (scanCount == 2 && !scanResult.startsWith("B")) {
+        } else if (scanCount == 2 && !text.startsWith("B")) {
             myHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -127,22 +129,24 @@ public class MainActivity extends Activity {
             });
             restartScan = true;
         }
+        //se la scansione non è corretta eseguo la notifica di errore
         if (restartScan) {
             try {
-
                 r.play();
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            //ripristino il contatore alla situazione precedente
             scanCount--;
 
         } else {
-            scansioni.add(scanResult);
 
+            scansioni.add(text);
+            //mostro a video il risultato della scansione
             myHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    resultTxt.setText("HAI SCANSIONATO: " + scanResult);
+                    resultTxt.setText("HAI SCANSIONATO: " + scansioni.get(scansioni.size() - 1));
                     qrButton.setEnabled(true);
                     qrButton.setClickable(true);
                     pistolButton.setEnabled(true);
@@ -152,17 +156,15 @@ public class MainActivity extends Activity {
             //se ho scansionato due codici, posso procedere con la nuova scansione
             if (scanCount == 2) {
                 String lastScan = scansioniList.getLast();
-
-                lastScan += " | " + scanResult + " | " + sdf.format(new Date());
+                SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy kk:mm:ss");
+                lastScan += " | " + text + " | " + sdf.format(new Date());
                 scansioniList.removeLast();
                 scansioniList.addLast(lastScan);
-
-
                 saveResult();
             } else {
-                scansioniList.addLast(scanResult);
-
+                scansioniList.addLast(text);
             }
+            //aggiorno a video la lista delle scansioni
             adapter.notifyDataSetChanged();
         }
     }
@@ -253,7 +255,7 @@ public class MainActivity extends Activity {
         lista = (ListView) findViewById(R.id.main_lista);
         scansioniList = new LinkedList<>();
 
-
+        //inizializzo i pulsanti
         sendButton.setEnabled(false);
         sendButton.setClickable(false);
         qrButton.setEnabled(true);
@@ -261,8 +263,8 @@ public class MainActivity extends Activity {
         pistolButton.setEnabled(true);
         pistolButton.setClickable(true);
 
-        sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 
+        //inizializzo la barra di avanzamento
         progress = new ProgressDialog(this);
         progress.setMessage("ATTENDERE..");
         progress.setProgressStyle(ProgressDialog.STYLE_SPINNER);
@@ -276,6 +278,7 @@ public class MainActivity extends Activity {
                     .permitAll().build();
             StrictMode.setThreadPolicy(policy);
         }
+        //inizializzo la lista
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, scansioniList);
         lista.setAdapter(adapter);                                                             //creo il database
         gdb = GestioneDB.getInstance(getApplicationContext());
@@ -284,6 +287,8 @@ public class MainActivity extends Activity {
         restoreDb();
 
         scanCount = 0;
+
+        //creazione della notifica di allarme
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         r = RingtoneManager.getRingtone(getApplicationContext(), notification);
@@ -291,6 +296,9 @@ public class MainActivity extends Activity {
 
     }
 
+    /**
+     * Metodo che permette di recuperare le scansioni dal db, in fase di primo caricamento dell'activity
+     */
     private void restoreDb() {
         new AsyncTask<Void, Void, LinkedList<String>>() {
 
@@ -301,6 +309,7 @@ public class MainActivity extends Activity {
 
             @Override
             protected LinkedList<String> doInBackground(Void... params) {
+                //carico la lista dal database
                 LinkedList<String> tableResult = gdb.loadLastDB();
                 return tableResult;
 
@@ -314,13 +323,16 @@ public class MainActivity extends Activity {
                 } else {
                     myHandler = new Handler();
                     final LinkedList<String> finalResult = result;
+                    //aggiorno la grafica
                     UIHandler.post(new Runnable() {
                         @Override
                         public void run() {
-
-
                             scansioniList.addAll(finalResult);
                             adapter.notifyDataSetChanged();
+                            if (scansioniList.size() > 0) {
+                                sendButton.setEnabled(true);
+                                sendButton.setClickable(true);
+                            }
 
                         }
                     });
@@ -342,7 +354,7 @@ public class MainActivity extends Activity {
 
 
     /**
-     * Metodo che esegue l'attività di scansione del barcode con la pistola
+     * Metodo che abilita la scansione tramite pistola
      *
      * @param v
      * @throws IOException
@@ -360,12 +372,13 @@ public class MainActivity extends Activity {
             if (scanCount == 0)
                 scansioni = new ArrayList<>();
 
-
+            //recupero le info sul bluetooth
             btAdapter = BluetoothAdapter.getDefaultAdapter();
             BluetoothDevice bd = null;
             if (btAdapter.isEnabled()) {
                 //trovo la pistola
                 Iterator<BluetoothDevice> bdIterator = btAdapter.getBondedDevices().iterator();
+                //trovo all'interno dei dispositivi associati, la pistola
                 while (bdIterator.hasNext()) {
                     BluetoothDevice device = bdIterator.next();
                     if (device.getName().startsWith("CT10")) {
@@ -376,22 +389,22 @@ public class MainActivity extends Activity {
                 if (bd != null) {
 
                     final BluetoothDevice finalBd = bd;
+                    //metodo asincrono di connessione alla pistola
+                    //creo un socket di comunicazione con la pistola
                     new AsyncTask<Void, Void, String>() {
 
                         @Override
                         protected void onPreExecute() {
-
                             progress.show();
                         }
 
                         @Override
                         protected String doInBackground(Void... params) {
+
                             BluetoothSocket tmp = null;
                             mmDevice = finalBd;
-
-
                             try {
-
+                                //creazione del socket alla pistola.
                                 tmp = mmDevice.createRfcommSocketToServiceRecord(mmDevice.getUuids()[0].getUuid());
 
                             } catch (Exception e) {
@@ -412,7 +425,7 @@ public class MainActivity extends Activity {
                                 btAdapter.cancelDiscovery();
 
                                 try {
-
+                                    //connesione al socket
                                     mmSocket.connect();
 
                                     if (progress != null && progress.isShowing())
@@ -421,7 +434,7 @@ public class MainActivity extends Activity {
                                     myHandler.post(new Runnable() {
                                         @Override
                                         public void run() {
-
+                                            //icona di avvenuta connesione
                                             Notification.Builder notiB = new Notification.Builder(MainActivity.this);
                                             notiB.setSmallIcon(R.mipmap.ic_blue_on).setContentTitle("BLUETOOTH CONNESSO").setContentText("PISTOLA CONNESSA");
                                             @SuppressWarnings("deprecation")
@@ -478,7 +491,6 @@ public class MainActivity extends Activity {
                                 }
                             }
                         }
-
                     }.execute();
 
 
@@ -493,7 +505,7 @@ public class MainActivity extends Activity {
             }
 
         } else {
-
+            //scollegare la pistola e terminare il servizio
             stopService();
             pistolButton.setText("Pistola");
             qrButton.setEnabled(true);
@@ -521,10 +533,11 @@ public class MainActivity extends Activity {
 
             @Override
             protected String doInBackground(Void... params) {
-
+                //procedo con l'ivio del file
                 if (gdb.sendFile()) {
 
                     try {
+                        //invio una richiesta ad un url, per eseguire uno script php
                         URL phpUrl = new URL("http://51.254.131.133/noschese/load_data.php");
                         URLConnection urlCon = phpUrl.openConnection();
                         BufferedReader br = new BufferedReader(
@@ -544,7 +557,6 @@ public class MainActivity extends Activity {
                     }
                     return null;
                 } else {
-
                     return "Errore nell'invio del file delle scansioni: RIPROVA!";
                 }
 
@@ -554,43 +566,44 @@ public class MainActivity extends Activity {
             @Override
             protected void onPostExecute(String msg) {
                 if (progress != null && progress.isShowing()) progress.dismiss();
-
+                //invio avvenuto, creo il messaggio da visualizzare a video
                 if (msg == null) {
-
                     msg = "INVIO DATI AL SERVER COMPLETATO!\nPROCEDERE CON UNA NUOVA SCANSIONE";
+                    //resetto la lista dei codici scansinati
                     scansioniList.clear();
                 }
                 //mostro il messaggio a video
                 showToastMsg(msg);
                 //riabilito i pulsanti e il msg di benvenuto
                 myHandler = new Handler();
+                //visualizzo a video che posso procedere con la scansione
                 myHandler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-
                         resultTxt.setText("PROCEDI CON UNA SCANSIONE");
+                        //riabilito i tasti
                         qrButton.setEnabled(true);
                         qrButton.setClickable(true);
+                        pistolButton.setEnabled(true);
+                        pistolButton.setClickable(true);
                         sendButton.setEnabled(true);
                         sendButton.setClickable(true);
+                        //aggiorno la lista a video
+                        adapter.notifyDataSetChanged();
                     }
-                }
-                        , LONGTIME + 500);
-
-
+                }, LONGTIME + 500);
             }
-
-
         }.execute();
     }
 
     @Override
     /**
-     * metodo che elabora le informazioni scansionate
+     * metodo che elabora le informazioni scansionate tramite la fotocamera
      */
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         toAssociateIntent = null;
         IntentResult scanningRes = null;
+        //verifico se il risulatato della scansione esista
         if (resultCode != RESULT_CANCELED) {
 
             scanningRes = IntentIntegrator.parseActivityResult(requestCode,
@@ -602,6 +615,7 @@ public class MainActivity extends Activity {
             //aumento il contatore delle scansioni e inserisco il risultato nella lista scansioni
             scanCount++;
             final String scanResult = scanningRes.getContents();
+            //verifico che la scansione sia corretta
             if (scanCount == 1 && !scanResult.startsWith("A")) {
                 showToastMsg("ERRORE SCANSIONE: SCANSIONE UN CODICE 'A'");
                 restartScan = true;
@@ -609,22 +623,25 @@ public class MainActivity extends Activity {
                 showToastMsg("ERRORE SCANSIONE: SCANSIONE UN CODICE 'B'");
                 restartScan = true;
             }
+            //verifico se ho avuto un errore di scansione, ed eseguo l'allarme
             if (restartScan) {
                 try {
                     Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
                     Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
                     r.play();
                 } catch (Exception e) {
-                    e.printStackTrace();
+
                 }
+                //diminuisco di uno il contatore delle scansioni corrette effettuate
                 scanCount--;
             } else {
                 scansioni.add(scanResult);
-
+                //notifico a video che ho scansionato un codice
                 myHandler.post(new Runnable() {
                     @Override
                     public void run() {
                         resultTxt.setText("HAI SCANSIONATO: " + scanResult);
+                        //riabilito i pulsanti
                         qrButton.setEnabled(true);
                         qrButton.setClickable(true);
                         pistolButton.setEnabled(true);
@@ -633,23 +650,23 @@ public class MainActivity extends Activity {
                 });
                 //se ho scansionato due codici, posso procedere con la nuova scansione
                 if (scanCount == 2) {
+                    //stampo a video le due scansioni, compresa l'orario di inserimento
                     String lastScan = scansioniList.getLast();
-
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy kk:mm:ss");
                     lastScan += " | " + scanResult + " | " + sdf.format(new Date());
                     scansioniList.removeLast();
                     scansioniList.addLast(lastScan);
 
                     saveResult();
                 } else {
+                    //aggiungo l'ultima scansione alla lista visibile sullo schermo
                     scansioniList.addLast(scanResult);
                 }
+                //aggiornamento della visualizzazione della lista delle scansioni
                 UIHandler.post(new Runnable() {
                     @Override
                     public void run() {
-
-
                         adapter.notifyDataSetChanged();
-
                     }
                 });
 
@@ -658,18 +675,11 @@ public class MainActivity extends Activity {
 
             //erore gestito dalla pagina della main
             resultTxt.setText("ERRORE: NESSUNA SCANSIONE EFFETTUATA");
+            //riabilito i pulsanti
             qrButton.setEnabled(true);
             qrButton.setClickable(true);
             pistolButton.setEnabled(true);
             pistolButton.setClickable(true);
-            //verifico se ho scansionato due codici corretti
-           /* if (scanCount < 2)
-                myHandler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        startScan();
-                    }
-                }, LONGTIME - 1500);*/
 
 
         }
@@ -677,19 +687,38 @@ public class MainActivity extends Activity {
 
     }
 
+    @Override
+    /**
+     * Ogni qual volta un utente tocca un area dello schermo
+     * disattivo la notifica sonora di errore se essa è in riproduzione
+     */
+    public void onUserInteraction() {
+        if (r != null && r.isPlaying())
+            r.stop();
+
+    }
 
     @Override
+    /**
+     * Se l'activity viene riesumata, aggiorno la lista delle scansioni
+     */
     public void onResume() {
         super.onResume();
         adapter.notifyDataSetChanged();
     }
 
     @Override
+    /**
+     * Override del metodo onBackPressed, così da non far accadere nulla in caso di pressione del tasto back
+     */
     public void onBackPressed() {
 
     }
 
     @Override
+    /**
+     * Metodo per creare le voci di menu
+     */
     public boolean onCreateOptionsMenu(Menu menu) {
 
         getMenuInflater().inflate(R.menu.menu_main, menu);
@@ -700,6 +729,9 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    /**
+     * Metodo per selezionare la voce di menu opzioni
+     */
     public boolean onOptionsItemSelected(MenuItem item) {
 
         showToastMsg("ARRIVEDERCI");
@@ -804,17 +836,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Metodo per terminare il servizio di scansione tramite pistola
+     */
     private void stopService() {
         if (checkServiceOn == null || checkServiceOn) {
 
-
+            //fermo il servizio
             stopService(serviceIntent);
+            //cambio l'icona di notifica, bluetooth scollegato
             Notification.Builder notiB = new Notification.Builder(MainActivity.this);
             notiB.setSmallIcon(R.mipmap.ic_blue_off).setContentTitle("BLUETOOTH DISCONESSO").setContentText("PISTOLA DISCONNESSA");
             @SuppressWarnings("deprecation")
             Notification noti = notiB.getNotification();
             noti.flags |= Notification.FLAG_NO_CLEAR;
             notificationManager.notify(0, noti);
+            //setto a false la variabile che verifica lo stato del servizio
             checkServiceOn = false;
         }
     }

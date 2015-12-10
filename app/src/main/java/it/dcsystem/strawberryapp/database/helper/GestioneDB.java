@@ -128,7 +128,13 @@ public class GestioneDB {
                 c.getColumnIndexOrThrow(ScansioniEntry.COLUMN_NAME_DATA_SCANSIONE)
         );
 
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        try {
+            String formattata = sdf.format((sdf.parse(data)));
+            data = formattata;
+        } catch (Exception e) {
 
+        }
         return data;
     }
 
@@ -144,8 +150,8 @@ public class GestioneDB {
 
             //scrivo tutto nel csv
             while (cur.moveToNext()) {
-
-                String row = cur.getString(1) + " | " + cur.getString(2) + " | " + cur.getString(3);
+                String formattata = sdf.format((sdf.parse(cur.getString(3))));
+                String row = cur.getString(1) + " | " + cur.getString(2) + " | " + formattata;
                 tableResult.add(row);
             }
 
@@ -212,6 +218,7 @@ public class GestioneDB {
                 con = new FTPClient();
 
                 con.connect(SERVER_ADDRESS, SERVER_PORT);
+
 
                 //se la connessione ha successo procedo all'invio del file
                 if (con.login(USER, PASSWORD)) {
