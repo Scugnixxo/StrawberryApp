@@ -543,17 +543,19 @@ public class MainActivity extends Activity {
                         BufferedReader br = new BufferedReader(
                                 new InputStreamReader(
                                         urlCon.getInputStream()));
-                        String line;
-
-                        while ((line = br.readLine()) != null) {
-
+                        String line = "";
+                        String result = "";
+                        while (line != null) {
+                            line = br.readLine();
+                            if (line != null)
+                                result += line;
                         }
                         br.close();
-                        if (!line.startsWith("Loaded"))
-                            return "ATTENZIO CARICAMENTO DATI NON RIUSCITO\nContattare l'amministratore!";
+                        if (!result.startsWith("Loaded"))
+                            return "ATTENZIONE CARICAMENTO DATI NON RIUSCITO\nContattare l'amministratore!";
 
                     } catch (Exception e) {
-                        return "ATTENZIO CARICAMENTO DATI NON RIUSCITO\nContattare l'amministratore!";
+                        return "ATTENZIONE CARICAMENTO DATI NON RIUSCITO\nContattare l'amministratore!";
                     }
                     return null;
                 } else {
